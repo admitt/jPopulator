@@ -28,9 +28,13 @@ import io.github.benas.jpopulator.api.Populator;
 import io.github.benas.jpopulator.beans.*;
 import io.github.benas.jpopulator.impl.PopulatorBuilder;
 import io.github.benas.jpopulator.randomizers.*;
-import org.junit.After;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.Test;
+
+import java.util.List;
+
+import static org.hamcrest.core.IsEqual.equalTo;
+import static org.junit.Assert.assertThat;
 
 /**
  * Test class for the {@link Populator} implementation.
@@ -39,26 +43,9 @@ import org.junit.Before;
  */
 public class PopulatorTest {
 
-    /**
-     * The populator to test.
-     */
-    private Populator populator;
-
-    @Before
-    public void setUp() throws Exception {
-        populator = new PopulatorBuilder().build();
-    }
-
-    @After
-    public void tearDown() throws Exception {
-        populator = null;
-        System.gc();
-    }
-
-    @org.junit.Test
+    @Test
     public void testGenerateFooBean() throws Exception {
-
-        Foo foo = (Foo) populator.populateBean(Foo.class);
+        Foo foo = new PopulatorBuilder().build().populateBean(Foo.class);
 
         Assert.assertNotNull(foo);
         Assert.assertNotNull(foo.getName());
@@ -69,20 +56,29 @@ public class PopulatorTest {
 
     }
 
-    @org.junit.Test
+    @Test
     public void testGeneratePersonBean() throws Exception {
+        Populator populator = createPersonPopulator();
 
-        populator = new PopulatorBuilder()
-                .registerRandomizer(Person.class, String.class, "firstName", new FirstNameRandomizer())
-                .registerRandomizer(Person.class, String.class, "lastName", new LastNameRandomizer())
-                .registerRandomizer(Person.class, String.class, "email", new EmailRandomizer())
-                .registerRandomizer(Address.class, String.class, "city", new CityRandomizer())
-                .registerRandomizer(Address.class, String.class, "country", new CountryRandomizer())
-                .registerRandomizer(Street.class, String.class, "name", new StreetRandomizer())
-                .build();
+        Person person = populator.populateBean(Person.class);
 
-        Person person = (Person) populator.populateBean(Person.class);
+        assertAllFieldsPopulated(person);
+    }
 
+    @Test
+    public void generateRequestedAmountOfPersonBeans() throws Exception {
+        Populator populator = createPersonPopulator();
+        int expectedBeansCount = 5;
+        List<Person> persons = populator.populateBeans(Person.class, expectedBeansCount);
+
+        assertThat(persons.size(), equalTo(expectedBeansCount));
+
+        for (Person person : persons) {
+            assertAllFieldsPopulated(person);
+        }
+    }
+
+    private void assertAllFieldsPopulated(Person person) {
         Assert.assertNotNull(person);
         Assert.assertNotNull(person.getFirstName());
         Assert.assertNotNull(person.getLastName());
@@ -96,7 +92,16 @@ public class PopulatorTest {
         Assert.assertNotNull(person.getAddress().getStreet().getNumber());
         Assert.assertNotNull(person.getAddress().getStreet().getType());
         Assert.assertNotNull(person.getAddress().getStreet().getName());
-
     }
 
+    private Populator createPersonPopulator() {
+        return new PopulatorBuilder()
+                .registerRandomizer(Person.class, String.class, "firstName", new FirstNameRandomizer())
+                .registerRandomizer(Person.class, String.class, "lastName", new LastNameRandomizer())
+                .registerRandomizer(Person.class, String.class, "email", new EmailRandomizer())
+                .registerRandomizer(Address.class, String.class, "city", new CityRandomizer())
+                .registerRandomizer(Address.class, String.class, "country", new CountryRandomizer())
+                .registerRandomizer(Street.class, String.class, "name", new StreetRandomizer())
+                .build();
+    }
 }

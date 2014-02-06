@@ -76,22 +76,20 @@ final class PopulatorImpl implements Populator {
     }
 
     @Override
-    public Object populateBean(final Class type) {
-
-        Object result;
+    public <T> T populateBean(final Class<T> type) {
         try {
-
             /*
              * For enum types, no instantiation needed (else java.lang.InstantiationException)
              */
             if (type.isEnum()) {
-                return DefaultRandomizer.getRandomValue(type);
+                //noinspection unchecked
+                return (T) DefaultRandomizer.getRandomValue(type);
             }
 
             /*
              * Create an instance of the type
              */
-            result = type.newInstance();
+            T result = type.newInstance();
 
             /*
              * Retrieve declared fields
@@ -123,28 +121,26 @@ final class PopulatorImpl implements Populator {
                     populateSimpleType(result, field);
                 }
             }
+            return result;
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Unable to populate an instance of type " + type, e);
             return null;
         }
-
-        return result;
     }
 
     @Override
-    public List<Object> populateBeans(final Class type) {
+    public <T> List<T> populateBeans(final Class<T> type) {
         byte size = (byte) Math.abs((Byte) DefaultRandomizer.getRandomValue(Byte.TYPE));
         return populateBeans(type, size);
     }
 
     @Override
-    public List<Object> populateBeans(final Class type, final int size) {
-        Object[] beans = new Object[size];
+    public <T> List<T> populateBeans(final Class<T> type, final int size) {
+        List<T> beans = new ArrayList<T>();
         for (int i = 0; i < size; i++) {
-            Object bean = populateBeans(type);
-            beans[i] = bean;
+            beans.add(populateBean(type));
         }
-        return Arrays.asList(beans);
+        return beans;
     }
 
     /**
