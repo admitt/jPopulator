@@ -115,11 +115,7 @@ final class PopulatorImpl implements Populator {
                 if (Modifier.isStatic(fieldModifiers) || Modifier.isFinal(fieldModifiers)) {
                     continue;
                 }
-                if (isCollectionType(field.getType())) {
-                    populateCollectionType(result, field);
-                } else {
-                    populateSimpleType(result, field);
-                }
+                PropertyUtils.setProperty(result, field.getName(), populateBeanBasedOnMetadata(result, field));
             }
             return result;
         } catch (Exception e) {
@@ -143,60 +139,57 @@ final class PopulatorImpl implements Populator {
         return beans;
     }
 
-    /**
-     * Method to populate a simple (ie non collection) type which can be a java built-in type or a user's custom type.
-     *
-     * @param result The result object on which the generated value will be set
-     * @param field  The field in which the generated value will be set
-     * @throws Exception Thrown when the generated value cannot be set to the given field
-     */
-    private void populateSimpleType(Object result, Field field) throws Exception {
-
+    private <T> Object populateBeanBasedOnMetadata(T result, Field field) throws Exception {
         Class<?> fieldType = field.getType();
         String fieldName = field.getName();
         Class<?> resultClass = result.getClass();
 
-        Object object;
-        if (customRandomizer(resultClass, fieldType, fieldName)) { // use custom randomizer if any
-            object = randomizers.get(new RandomizerDefinition(resultClass, fieldType, fieldName)).getRandomValue();
-        } else if (isJavaType(fieldType)) { //Java type (no need for recursion)
-            object = DefaultRandomizer.getRandomValue(fieldType);
-        } else { // Custom type (recursion needed to populate nested custom types if any)
-            object = populateBean(fieldType);
+        if (customRandomizer(resultClass, fieldType, fieldName)) {
+            return randomizers.get(new RandomizerDefinition(resultClass, fieldType, fieldName)).getRandomValue();
+        } else if (isCollectionType(fieldType)) {
+            return populateCollectionType(field);
+        } else {
+            return populateSimpleType(field);
         }
-        PropertyUtils.setProperty(result, fieldName, object);
+    }
 
+    /**
+     * Method to populate a simple (ie non collection) type which can be a java built-in type or a user's custom type.
+     *
+     * @param field  The field in which the generated value will be set
+     * @throws Exception Thrown when the generated value cannot be set to the given field
+     */
+    private Object populateSimpleType(Field field) throws Exception {
+        Class<?> fieldType = field.getType();
+        if (isJavaType(fieldType)) { //Java type (no need for recursion)
+            return DefaultRandomizer.getRandomValue(fieldType);
+        } else { // Custom type (recursion needed to populate nested custom types if any)
+            return populateBean(fieldType);
+        }
     }
 
     /**
      * Method to populate a collection type which can be a array or a {@link Collection}.
      *
-     * @param result The result object on which the generated value will be set
      * @param field  The field in which the generated value will be set
      * @throws Exception Thrown when the generated value cannot be set to the given field
      */
-    private void populateCollectionType(Object result, Field field) throws Exception {
+    private Object populateCollectionType(Field field) throws Exception {
 
         Class<?> fieldType = field.getType();
-        String fieldName = field.getName();
 
-        //Array type
         if (fieldType.isArray()) {
-            PropertyUtils.setProperty(result, fieldName, Array.newInstance(fieldType.getComponentType(), 0));
-            return;
+            return Array.newInstance(fieldType.getComponentType(), 0);
         }
 
-        //Collection type
-        Object collection = null;
         if (List.class.isAssignableFrom(fieldType)) { // List, ArrayList, LinkedList, etc
-            collection = Collections.emptyList();
+            return Collections.emptyList();
         } else if (Set.class.isAssignableFrom(fieldType)) { // Set, HashSet, TreeSet, LinkedHashSet, etc
-            collection = Collections.emptySet();
+            return Collections.emptySet();
         } else if (Map.class.isAssignableFrom(fieldType)) { // Map, HashMap, Dictionary, Properties, etc
-            collection = Collections.emptyMap();
+            return Collections.emptyMap();
         }
-        PropertyUtils.setProperty(result, fieldName, collection);
-
+        return null;
     }
 
     /**

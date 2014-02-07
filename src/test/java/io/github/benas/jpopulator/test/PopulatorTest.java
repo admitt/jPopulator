@@ -25,12 +25,15 @@
 package io.github.benas.jpopulator.test;
 
 import io.github.benas.jpopulator.api.Populator;
+import io.github.benas.jpopulator.api.Randomizer;
 import io.github.benas.jpopulator.beans.*;
 import io.github.benas.jpopulator.impl.PopulatorBuilder;
 import io.github.benas.jpopulator.randomizers.*;
 import org.junit.Assert;
 import org.junit.Test;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.core.IsEqual.equalTo;
@@ -76,6 +79,25 @@ public class PopulatorTest {
         for (Person person : persons) {
             assertAllFieldsPopulated(person);
         }
+    }
+
+    @Test
+    public void allowApiUserToProvideOwnCollectionRandomizer() throws Exception {
+        final int expectedNamesCount = 5;
+        Populator populator = new PopulatorBuilder().registerRandomizer(Bar.class, List.class, "names", new Randomizer() {
+            @Override
+            public Object getRandomValue() {
+                ArrayList<String> names = new ArrayList<String>();
+                FirstNameRandomizer firstNameRandomizer = new FirstNameRandomizer();
+                for (int i = 0; i < expectedNamesCount; i++) {
+                    names.add(firstNameRandomizer.getRandomValue());
+                }
+                return names;
+            }
+        }).build();
+
+        Bar bar = populator.populateBean(Bar.class);
+        assertThat(bar.getNames().size(), equalTo(expectedNamesCount));
     }
 
     private void assertAllFieldsPopulated(Person person) {
